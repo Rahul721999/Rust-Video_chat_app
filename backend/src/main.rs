@@ -7,7 +7,7 @@ async fn manual_hello() -> impl Responder {
 }
 
 async fn connect_websocket(){
-    let server = TcpListener::bind("0.0.0.0:8080").unwrap();
+    let server = TcpListener::bind("127.0.0.1:8080").unwrap();
 
     for stream in server.incoming() {
         spawn (move || {
