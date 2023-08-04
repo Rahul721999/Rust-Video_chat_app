@@ -1,35 +1,19 @@
+mod socket;
+use socket::connect_websocket;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use tungstenite::accept;
-use std::{net::TcpListener, thread::spawn};
 
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
+
+async fn healthcheck() -> impl Responder {
+    HttpResponse::Ok().body("Health-check Successfull")
 }
 
-async fn connect_websocket(){
-    let server = TcpListener::bind("127.0.0.1:8080").unwrap();
-
-    for stream in server.incoming() {
-        spawn (move || {
-            let mut websocket = accept(stream.unwrap()).unwrap();
-            loop {
-                let msg = websocket.read().unwrap();
-                // We do not want to send back ping/pong messages.
-                if msg.is_binary() || msg.is_text() {
-                    println!("Message recieved through WS: {}",msg.to_string().trim());
-                    websocket.send(msg).unwrap();
-                }
-            }
-        });
-    }
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     connect_websocket().await;
     HttpServer::new(|| {
         App::new()
-            .route("/hey", web::get().to(manual_hello))
+            .route("/check", web::get().to(healthcheck))
     })
     .bind(("127.0.0.1", 8888))?
     .run()
