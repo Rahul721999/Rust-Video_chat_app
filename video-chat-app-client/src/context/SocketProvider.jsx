@@ -13,7 +13,6 @@ export const SocketProvider = (props) =>{
     socket.onopen = () =>{
         console.log("connected");
     }
-
     socket.onclose = (event) => {
         console.log('WebSocket connection closed:', event.code, event.reason);
     };

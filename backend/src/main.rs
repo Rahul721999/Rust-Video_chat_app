@@ -3,6 +3,7 @@ use socket::connect_websocket;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 
+
 async fn healthcheck() -> impl Responder {
     HttpResponse::Ok().body("Health-check Successfull")
 }
@@ -10,7 +11,10 @@ async fn healthcheck() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    connect_websocket().await;
+    use std::collections::HashMap;
+    let mut user_to_room_id: HashMap<String, String> = HashMap::new();
+
+    connect_websocket();
     HttpServer::new(|| {
         App::new()
             .route("/check", web::get().to(healthcheck))
