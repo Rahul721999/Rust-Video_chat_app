@@ -1,11 +1,12 @@
-import {React, useCallback, useState} from 'react';
-import {useSocket} from "../context/SocketProvider";
+import React, {useCallback, useEffect, useState} from 'react';
+import {ConnectSocket} from "../context/SocketProvider";
 
-
+/********************----------------- Lobby Screen -----------------********************/
 const LobbyScreen = () => {
+
     const [email, setEmail] = useState("");
     const [room, setRoom] = useState("");
-    const socket = useSocket();
+    const [socket, setSocket] = useState(null);
 
     const handleEmailChange = (e) => {
         e.preventDefault();
@@ -15,30 +16,45 @@ const LobbyScreen = () => {
         e.preventDefault();
         setRoom(e.target.value);
     }
+    /*------------------------------------ Handle Room Join req------------------------------------*/
+    const handleRoomJoin = useCallback(() => {
+        console.log('Room Join Req by: %s', email);
+    }, []);
+    /* -------------------------------Handle Form Submition on-------------------------------*/
     const handleFormSubmit = useCallback((e) => {
         e.preventDefault();
+        setSocket(ConnectSocket(room));
+        
+    }, [room]);
 
-        socket.send(JSON.stringify({email: email, room: room}));
-
-        socket.onmessage = (msg) => {
-            let rec_msg = JSON.parse(msg.data);
-            console.log('"%s" joined the room', rec_msg.email);
+    
+    useEffect(() => {
+        if( handleFormSubmit && socket){
+            socket.onmessage = (e)=>{
+                console.log(e.data)
+            }
         }
+    }, [socket, room, handleFormSubmit]);
 
-    }, [email, room, socket]);
-    return (<div>
-        <h1>Lobby</h1>
-        <form>
-            <label htmlFor='email'>Email:</label>
-            <input type='email' id="email"
-                onChange={handleEmailChange}></input>
-            <label htmlFor='room'>Room No:</label>
-            <input type='text' id="room"
-                onChange={handleRoomChange}></input>
-            <button onClick={handleFormSubmit}
-                type='submit'>Join</button>
-        </form>
-    </div>)
+
+    /*-------------------------------------Handle Diff REQ type-------------------------------------*/
+
+    return (
+        <div>
+            <h1>Lobby</h1>
+            <form>
+                <label htmlFor='email'>Email:</label>
+                <input type='email' id="email"
+                    onChange={handleEmailChange}></input>
+                <label htmlFor='room'>Room No:</label>
+                <input type='text' id="room"
+                    onChange={handleRoomChange}></input>
+                <button onClick={handleFormSubmit}
+                    type='submit'>Join</button>
+            </form>
+        </div>
+    )
+    
 }
 
 export default LobbyScreen;

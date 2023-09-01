@@ -1,21 +1,21 @@
-mod socket;
-use socket::connect_websocket;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-
-
-async fn healthcheck() -> impl Responder {
-    HttpResponse::Ok().body("Health-check Successfull")
-}
+#![allow(non_snake_case)]
+use actix::Actor;
+use actix_web::{App, HttpServer};
+mod server;
+mod lobby;
+mod messages;
+mod connect;
 
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    connect_websocket().await;
-    HttpServer::new(|| {
+    let chat_server = lobby::Lobby::default().start();
+    HttpServer::new(move || 
         App::new()
-            .route("/check", web::get().to(healthcheck))
-    })
-    .bind(("127.0.0.1", 8888))?
-    .run()
-    .await
+            .service(connect::connect_socket)
+            .data(chat_server.clone())
+    )
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
 }
