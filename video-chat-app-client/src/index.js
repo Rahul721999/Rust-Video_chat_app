@@ -11,9 +11,9 @@ const root = createRoot(rootElement);
 root.render (
   <React.StrictMode>
     <BrowserRouter>
-      <SocketProvider>  
+      {/* <SocketProvider>   */}
         <App/>
-      </SocketProvider>
+      {/* </SocketProvider>  */}
     </BrowserRouter>
   </React.StrictMode>
 )
