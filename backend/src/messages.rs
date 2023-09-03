@@ -1,6 +1,6 @@
 use actix::prelude::{Message, Recipient};
 use uuid::Uuid;
-
+use serde::{Serialize, Deserialize};
 
 ///
 /// WebSocket messages
@@ -33,10 +33,40 @@ pub struct DisconnectMsg{
     pub room_id: Uuid
 }
 
+
+///
+/// Message recieved from the client...
+/// 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct ClientActorMsg{
-    pub id: Uuid,
-    pub room_id: Uuid,
-    pub msg : String,
+    pub id: Uuid, /* socketID */
+    pub room_id: Uuid, /* socketId connected to RoomID */
+    pub msg : String, /* msg_data */
+}
+
+///
+/// Msg in json from...
+/// 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Messager{
+    pub req_type: Request,
+    pub email : String,
+    pub room : String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum Request{
+    CreateRoomReq,
+    JoinReq,
+}
+
+/* Impl to_string() method for Request enum*/
+impl ToString for Request{
+    fn to_string(&self) -> String {
+        match self{
+            Self::CreateRoomReq => String::from("CreateRoomReq"),
+            Self::JoinReq => String::from("JoinReq"),
+        }
+    }
 }

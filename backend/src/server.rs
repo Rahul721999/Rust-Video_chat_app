@@ -74,12 +74,24 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
-            Ok(ws::Message::Text(s)) => self.lobby_addr.do_send(ClientActorMsg{
-                id : self.id, 
-                msg: s.to_string(),
-                room_id: self.roomId,
-            }),
-            Err(e) => panic!("{}",e),
+            Ok(ws::Message::Text(s)) => 
+                {
+                    println!("{:?}",s);
+                    let data: Messager = serde_json::from_str(&s).expect("❗failed to convert string to json");
+                    match data.req_type{
+                        Request::CreateRoomReq =>{
+                            println!("Join req by: {}; room id: {}",data.email, data.room.to_string());
+                        },
+                        _=>{
+                            println!("Undefined type !!!");
+                        }
+                    };
+                    self.lobby_addr.do_send(ClientActorMsg{
+                    id : self.id, 
+                    msg: s.to_string(),
+                    room_id: self.roomId,})
+                },
+            Err(e) => println!("❌ {}",e),
             _=> ()
         }
     }
