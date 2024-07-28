@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(lobby.clone())
-            .route("/ws/{email}", web::get().to(start_ws_connection))
+            .route("/ws/", web::get().to(start_ws_connection))
 
     })
     .bind("127.0.0.1:8080")?
