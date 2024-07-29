@@ -21,11 +21,11 @@ pub async fn start_ws_connection(
     req: HttpRequest,
     stream: web::Payload,
     lobby: web::Data<Arc<Mutex<Lobby>>>, // Use the lobby if needed
-    user: Query<User>,                   // Extract the email & roomId parameter
+    query: Query<User>,                   // Extract the email & roomId parameter
 ) -> Result<HttpResponse, Error> {
     // Create the WebSocket actor
 
-    let email = &user.email;
+    let email = &query.email;
     let ws = MyWebSocket {
         email: email.clone(),
         lobby: lobby.get_ref().clone(),
@@ -35,8 +35,8 @@ pub async fn start_ws_connection(
         error!("Failed to get lock on Lobby AppState: {}", err);
     }) {
         // check if the user wants to join existing room
-        if let Some(room_id) = user.room {
-            if lobby.join_room(email.clone(), room_id).is_err() {
+        if let Some(room_id) = query.room {
+            if lobby.join_room(email, room_id).is_err() {
                 return Err(error::ErrorInternalServerError("Room Id doesn't exists"));
             }
         } else {

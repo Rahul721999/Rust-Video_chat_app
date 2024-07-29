@@ -20,9 +20,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
     fn started(&mut self, ctx: &mut Self::Context) {
         let addr = ctx.address();
         // store the connection to the corresponding user
-        if let Ok(mut lobby) = self.lobby.lock(){
+        if let Ok(mut lobby) = self.lobby.lock() {
             lobby.store_ws_connection(&self.email, addr);
-        }else{
+        } else {
             error!("Failed to get lock on mutex");
         }
     }
@@ -41,7 +41,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
                 let lobby = self.lobby.clone();
                 Arbiter::spawn(async move {
                     info!("{email} Disconnected");
-                    broadcast(lobby, &email, format!("{} disconnected", &email)).await;
+                    broadcast(&lobby, &email, format!("{} disconnected", &email)).await;
+                    remove_user(&lobby, &email).await;
                 });
                 ctx.stop();
             }
@@ -51,8 +52,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
     }
 }
 
-
-pub async fn broadcast(lobby: Arc<Mutex<Lobby>>, email: &str, msg: String) {
+pub async fn broadcast(lobby: &Arc<Mutex<Lobby>>, email: &str, msg: String) {
     let lobby = {
         if let Ok(lobby) = lobby.lock() {
             lobby
@@ -66,5 +66,13 @@ pub async fn broadcast(lobby: Arc<Mutex<Lobby>>, email: &str, msg: String) {
         lobby.broadcast(room_id, &msg, email)
     } else {
         error!("Failed to get the user's roomId")
+    }
+}
+
+pub async fn remove_user(lobby: &Arc<Mutex<Lobby>>, email: &str) {
+    if let Ok(mut lobby) = lobby.lock() {
+        if let Err(err) = lobby.remove_user(email) {
+            error!("{err:?}");
+        }
     }
 }

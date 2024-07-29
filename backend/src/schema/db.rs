@@ -1,6 +1,6 @@
 use actix::{Addr, Handler};
 use actix_web::HttpResponse;
-use log::info;
+use log::{debug, info};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -37,15 +37,26 @@ impl Lobby {
     }
 
     // for user who wants to join a existing room
-    pub fn join_room(&mut self, user_email: String, room_id: Uuid) -> Result<(), HttpResponse> {
+    pub fn join_room(&mut self, user_email: &str, room_id: Uuid) -> Result<(), HttpResponse> {
         if let Some(room) = self.room.get_mut(&room_id) {
-            room.push(user_email.clone());
-            self.user_in_room.insert(user_email, room_id);
-            info!("{:?}", room);
+            room.push(user_email.to_owned());
+            self.user_in_room.insert(user_email.to_owned(), room_id);
+            debug!("{user_email} added to room : {room_id}");
+            debug!("room updated: {:?}", room);
             Ok(())
         } else {
             Err(HttpResponse::NotFound().finish())
         }
+    }
+
+    // fn to remove user from the room
+    pub fn remove_user(&mut self, user_email: &str) -> Result<(), HttpResponse> {
+        if self.user.is_empty() || self.user.get(user_email).is_none() {
+            return Err(HttpResponse::NotFound().body("User not found"));
+        }
+        self.user.remove(user_email);
+        self.user_in_room.remove(user_email);
+        Ok(())
     }
 
     // Get the room ID of a user
@@ -68,7 +79,7 @@ impl Lobby {
     }
 }
 
-
+/* This implementation is necessary to send messages using the websocket address*/
 pub struct SendMessage(pub String);
 
 impl actix::Message for SendMessage {
