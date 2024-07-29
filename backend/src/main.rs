@@ -1,5 +1,6 @@
 mod schema;
 mod handle_msg;
+mod utils;
 mod api;
 use schema::db::Lobby;
 use api::lobby::start_ws_connection;

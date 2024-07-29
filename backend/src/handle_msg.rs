@@ -1,29 +1,70 @@
-use crate::schema::message_schema::Message;
-use log::{error, info};
+use crate::schema::{db::{Lobby, SendMessage}, message_schema::Message};
+use actix_web::HttpResponse;
+use log::{debug, error};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 // handle diff type of websocket messages
-pub fn handle_msg(msg: String) -> Result<(), ()> {
+pub fn handle_msg(lobby: &mut Arc<Mutex<Lobby>>, msg: String) -> Result<(), HttpResponse> {
     let msg: Message = match serde_json::from_str(&msg) {
         Ok(msg) => msg,
         Err(_) => {
             error!("Failed to parse the msg");
-            return Err(())
+            return Err(HttpResponse::InternalServerError().finish());
         }
     };
+
+    let lobby = {
+        if let Ok(lobby) = lobby.lock() {
+            lobby
+        } else {
+            error!("failed to get the lock on Mutex, while broadcasting");
+            return Err(HttpResponse::InternalServerError().finish());
+        }
+    };
+
     match msg {
-        Message::Broadcast(msg) => broadcast_msg(msg.sender, msg.text),
-        Message::Forward(msg) => forward_msg(msg.sender, msg.reciever, msg.text)
+        Message::Broadcast(msg) => broadcast_msg(lobby, &msg.sender, msg.text),
+        Message::Forward(msg) => forward_msg(lobby, msg.sender, msg.reciever, msg.text),
     }
 }
 
 /// broadcast msg to everyone in the same room
-fn broadcast_msg(email: String, text: String) -> Result<(), ()> {
-    info!("User: {email}, send a msg: {text}");
-    Ok(())
+pub fn broadcast_msg(
+    lobby: MutexGuard<Lobby>,
+    email: &str,
+    text: String,
+) -> Result<(), HttpResponse> {
+    debug!("Recieved broadcast msg: {text} from {}", email);
+
+    match lobby.get_room_id(email) {
+        Some(room_id) => {
+            lobby.broadcast(room_id, &text, email);
+            Ok(())
+        }
+        None => {
+            error!("User's room_id not found");
+            Err(HttpResponse::NotFound().finish())
+        }
+    }
 }
 
 /// forward msg to specific sender
-fn forward_msg(sender: String, reciever: String, text: String) -> Result<(), ()> {
-    info!("sender: {sender} reciever: {reciever} msg:{text}");
-    Ok(())
+fn forward_msg(
+    lobby: MutexGuard<Lobby>,
+    sender: String,
+    reciever: String,
+    text: String,
+) -> Result<(), HttpResponse> {
+    debug!("sender: {sender} reciever: {reciever} msg:{text}");
+    match lobby.user.get(&reciever){
+        Some(reciever) =>{
+            reciever.do_send(SendMessage(text));
+            Ok(())
+        }
+        None=>{
+            error!("Reciever not found");
+            Err(HttpResponse::NotFound().finish())
+        }
+    }
+    
 }
