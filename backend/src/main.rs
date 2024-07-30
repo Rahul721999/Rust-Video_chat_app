@@ -13,7 +13,7 @@ use web::Data;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Initialize the logger with a default log level
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
     
     let lobby = Data::new(Arc::new(Mutex::new(Lobby::new())));

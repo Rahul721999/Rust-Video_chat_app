@@ -1,10 +1,11 @@
 // src/websocket.rs
 
-use super::db::Lobby;
+use super::db::{Lobby, SendMessage};
 use crate::handle_msg::{broadcast_msg, handle_msg};
 use actix::prelude::*;
 use actix_web_actors::ws;
 use log::{error, info};
+use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 pub struct MyWebSocket {
@@ -17,24 +18,29 @@ impl Actor for MyWebSocket {
 }
 
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
+
+
+    // handle websocket started event
     fn started(&mut self, ctx: &mut Self::Context) {
         let addr = ctx.address();
         // store the connection to the corresponding user
         if let Ok(mut lobby) = self.lobby.lock() {
+            if let Some(roomid) = lobby.get_room_id(&self.email){
+                addr.do_send(SendMessage(json!({"roomId" : roomid}).to_string()));
+            };
             lobby.store_ws_connection(&self.email, addr);
         } else {
             error!("Failed to get lock on mutex");
         }
     }
+
+
+    // handle all diff types of ws messages
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg), // just return pong for ping msg
             Ok(ws::Message::Text(text)) => {
-                if handle_msg(&mut self.lobby, text).is_err() {
-                    ctx.text("Failure");
-                } else {
-                    ctx.text("Success");
-                }
+                handle_msg(&mut self.lobby, text);
             }
             Ok(ws::Message::Close(_msg)) => {
                 handle_close(self);
@@ -51,9 +57,7 @@ pub fn handle_close(ws: &mut MyWebSocket) {
     let lobby = ws.lobby.clone();
     Arbiter::spawn(async move {
         if let Ok(lobby) = lobby.lock() {
-            if broadcast_msg(lobby, &email, format!("{} disconnected", email)).is_err() {
-                return;
-            }
+            broadcast_msg(lobby, &email, format!("{} disconnected", email));
         }
         remove_user(&lobby, &email).await;
         info!("{email} Disconnected");

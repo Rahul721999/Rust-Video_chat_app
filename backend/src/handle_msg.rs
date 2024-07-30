@@ -1,15 +1,17 @@
-use crate::schema::{db::{Lobby, SendMessage}, message_schema::Message};
-use actix_web::HttpResponse;
+use crate::schema::{
+    db::{Lobby, SendMessage},
+    message_schema::Message,
+};
 use log::{debug, error};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 // handle diff type of websocket messages
-pub fn handle_msg(lobby: &mut Arc<Mutex<Lobby>>, msg: String) -> Result<(), HttpResponse> {
+pub fn handle_msg(lobby: &mut Arc<Mutex<Lobby>>, msg: String) {
     let msg: Message = match serde_json::from_str(&msg) {
         Ok(msg) => msg,
         Err(_) => {
             error!("Failed to parse the msg");
-            return Err(HttpResponse::InternalServerError().finish());
+            return;
         }
     };
 
@@ -18,7 +20,7 @@ pub fn handle_msg(lobby: &mut Arc<Mutex<Lobby>>, msg: String) -> Result<(), Http
             lobby
         } else {
             error!("failed to get the lock on Mutex, while broadcasting");
-            return Err(HttpResponse::InternalServerError().finish());
+            return;
         }
     };
 
@@ -33,17 +35,15 @@ pub fn broadcast_msg(
     lobby: MutexGuard<Lobby>,
     email: &str,
     text: String,
-) -> Result<(), HttpResponse> {
+){
     debug!("Recieved broadcast msg: {text} from {}", email);
 
     match lobby.get_room_id(email) {
         Some(room_id) => {
             lobby.broadcast(room_id, &text, email);
-            Ok(())
         }
         None => {
             error!("User's room_id not found");
-            Err(HttpResponse::NotFound().finish())
         }
     }
 }
@@ -54,17 +54,14 @@ fn forward_msg(
     sender: String,
     reciever: String,
     text: String,
-) -> Result<(), HttpResponse> {
+){
     debug!("sender: {sender} reciever: {reciever} msg:{text}");
-    match lobby.user.get(&reciever){
-        Some(reciever) =>{
+    match lobby.user.get(&reciever) {
+        Some(reciever) => {
             reciever.do_send(SendMessage(text));
-            Ok(())
         }
-        None=>{
+        None => {
             error!("Reciever not found");
-            Err(HttpResponse::NotFound().finish())
         }
     }
-    
 }
