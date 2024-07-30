@@ -4,6 +4,8 @@ use log::{debug, info};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::utils::msg_builder::create_joined_msg;
+
 use super::websocket::MyWebSocket;
 pub struct Lobby {
     pub room: HashMap<Uuid, Vec<String>>, // HashMap{RoomId, Vec<Email>}
@@ -43,6 +45,9 @@ impl Lobby {
             self.user_in_room.insert(user_email.to_owned(), room_id);
             debug!("{user_email} added to room : {room_id}");
             debug!("room updated: {:?}", room);
+
+            let someone_joined_msg = create_joined_msg(user_email);
+            self.broadcast(room_id, &someone_joined_msg, user_email);
             Ok(())
         } else {
             Err(HttpResponse::NotFound().finish())

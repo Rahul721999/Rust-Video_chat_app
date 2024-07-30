@@ -1,11 +1,10 @@
 // src/websocket.rs
 
 use super::db::{Lobby, SendMessage};
-use crate::handle_msg::{broadcast_msg, handle_msg};
+use crate::{handle_msg::{broadcast_msg, handle_msg}, utils::msg_builder::create_room_id_msg};
 use actix::prelude::*;
 use actix_web_actors::ws;
 use log::{error, info};
-use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 pub struct MyWebSocket {
@@ -26,7 +25,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
         // store the connection to the corresponding user
         if let Ok(mut lobby) = self.lobby.lock() {
             if let Some(roomid) = lobby.get_room_id(&self.email){
-                addr.do_send(SendMessage(json!({"roomId" : roomid}).to_string()));
+                let room_id_msg = create_room_id_msg(roomid);
+                addr.do_send(SendMessage(room_id_msg));
             };
             lobby.store_ws_connection(&self.email, addr);
         } else {
