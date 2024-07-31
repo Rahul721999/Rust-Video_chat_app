@@ -59,9 +59,31 @@ impl Lobby {
         if self.user.is_empty() || self.user.get(user_email).is_none() {
             return Err(HttpResponse::NotFound().body("User not found"));
         }
+        // Find the room ID of the user
+        let room_id = match self.user_in_room.get(user_email) {
+            Some(id) => *id,
+            None => return Err(HttpResponse::NotFound().body("User not found in any room")),
+        };
+
         self.user.remove(user_email);
         self.user_in_room.remove(user_email);
+
+        Self::delete_room_if_empty(self, room_id, user_email);
+
         Ok(())
+    }
+
+    // fn to check if the room is empty after last user dropped
+    fn delete_room_if_empty(&mut self, room_id: Uuid, user_email: &str) {
+        if let Some(room) = self.room.get_mut(&room_id) {
+            room.retain(|email| email != user_email); // Remove the user from the room
+
+            // If the room is empty, delete it
+            if room.is_empty() {
+                self.room.remove(&room_id);
+                info!("Room {} deleted as it is now empty", room_id);
+            }
+        }
     }
 
     // Get the room ID of a user
@@ -75,7 +97,7 @@ impl Lobby {
             for user_email in users {
                 if let Some(addr) = self.user.get(user_email) {
                     if user_email != sender_email {
-                        info!("Sending message to {}: {}", user_email, message);
+                        info!("Broadcasting message to {}", user_email);
                         addr.do_send(SendMessage(message.to_owned()));
                     }
                 }
