@@ -1,11 +1,10 @@
-use crate::schema::message_schema::{MsgType, NotificationMsg, OutgoingMsg, RoomIdMsg};
+use crate::schema::message_schema::{MsgType, OutgoingMsg, RoomIdMsg, UserJoinedMsg};
 
-pub fn create_joined_msg(email: &str)-> String{
-    let joined_msg = format!("{} has joined the room", email);
-    
-    OutgoingMsg::Notification(NotificationMsg {
-        msg_type: MsgType::Notification,
-        msg: joined_msg.to_string(),
+pub fn create_joined_msg(user_email: &str)-> String{
+ 
+    OutgoingMsg::UserJoined(UserJoinedMsg {
+        msg_type: MsgType::UserJoined,
+        user_email: user_email.to_owned()
     }).to_string()
 }
 

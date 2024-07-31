@@ -31,48 +31,46 @@ pub struct Broadcast {
 /* ------------------------------------Message type, expected by the client------------------------------------ */
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
-pub enum MsgType{
+pub enum MsgType {
     RoomId,
+    UserJoined,
     Notification,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)] 
+#[serde(untagged)]
 pub enum OutgoingMsg {
     RoomId(RoomIdMsg),
+    UserJoined(UserJoinedMsg),
     Notification(NotificationMsg),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RoomIdMsg {
-    #[serde(rename="type")]
+    #[serde(flatten)]
     pub msg_type: MsgType,
-    #[serde(rename="roomId")]
+    #[serde(rename = "roomId")]
     pub room_id: uuid::Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NotificationMsg{
-    #[serde(rename="type")]
+pub struct NotificationMsg {
+    #[serde(flatten)]
     pub msg_type: MsgType,
     pub msg: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserJoinedMsg {
+    #[serde(flatten)]
+    pub msg_type: MsgType,
+    pub user_email: String,
+}
 
 // Implement Display for OutgoingMsg
 impl fmt::Display for OutgoingMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            OutgoingMsg::RoomId(room_id_msg) => write!(
-                f,
-                "RoomId Message - Type: {:?}, Room ID: {}",
-                room_id_msg.msg_type, room_id_msg.room_id
-            ),
-            OutgoingMsg::Notification(notification_msg) => write!(
-                f,
-                "Notification Message - Type: {:?}, Message: {}",
-                notification_msg.msg_type, notification_msg.msg
-            ),
-        }
+        let json_message = serde_json::to_string(self).map_err(|_| fmt::Error)?;
+        write!(f, "{}", json_message)
     }
 }
