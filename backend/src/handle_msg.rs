@@ -32,7 +32,6 @@ pub fn handle_msg(lobby: &mut Arc<Mutex<Lobby>>, msg: String) {
 
 /// broadcast msg to everyone in the same room
 pub fn broadcast_msg(lobby: MutexGuard<Lobby>, email: &str, text: String) {
-    debug!("Recieved broadcast msg: {text} from {}", email);
 
     match lobby.get_room_id(email) {
         Some(room_id) => {

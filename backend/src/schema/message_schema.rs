@@ -35,6 +35,7 @@ pub enum MsgType {
     RoomId,
     UserJoined,
     Notification,
+    UserLeft
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,6 +44,7 @@ pub enum OutgoingMsg {
     RoomId(RoomIdMsg),
     UserJoined(UserJoinedMsg),
     Notification(NotificationMsg),
+    UserLeft(UserLeftMsg)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,6 +64,12 @@ pub struct NotificationMsg {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserJoinedMsg {
+    #[serde(flatten)]
+    pub msg_type: MsgType,
+    pub user_email: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserLeftMsg {
     #[serde(flatten)]
     pub msg_type: MsgType,
     pub user_email: String,

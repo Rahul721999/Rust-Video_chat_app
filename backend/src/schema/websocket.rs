@@ -1,7 +1,7 @@
 // src/websocket.rs
 
 use super::db::{Lobby, SendMessage};
-use crate::{handle_msg::{broadcast_msg, handle_msg}, utils::msg_builder::create_room_id_msg};
+use crate::{handle_msg::{broadcast_msg, handle_msg}, utils::msg_builder::{create_disconnect_msg, create_room_id_msg}};
 use actix::prelude::*;
 use actix_web_actors::ws;
 use log::{error, info};
@@ -57,7 +57,8 @@ pub fn handle_close(ws: &mut MyWebSocket) {
     let lobby = ws.lobby.clone();
     Arbiter::spawn(async move {
         if let Ok(lobby) = lobby.lock() {
-            broadcast_msg(lobby, &email, format!("{} disconnected", email));
+            let msg = create_disconnect_msg(&email);
+            broadcast_msg(lobby, &email, msg);
         }
         remove_user(&lobby, &email).await;
         info!("{email} Disconnected");
