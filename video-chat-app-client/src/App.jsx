@@ -7,16 +7,16 @@ import { PeerProvider } from './context/PeerProvidor';
 
 const App = () => {
   return (
-    <WSprovider>
-      <PeerProvider>
+    <PeerProvider>
+      <WSprovider>
         <Router>
           <Routes>
             <Route path="/" element={<LobbyScreen />} />
             <Route path="/room/:roomId" element={<RoomScreen />} />
           </Routes>
         </Router>
-      </PeerProvider>
-    </WSprovider>
+      </WSprovider>
+    </PeerProvider>
   );
 };
 

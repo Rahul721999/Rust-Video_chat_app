@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// components/LobbyScreen/lobbyscreen.jsx
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../context/WScontext';
 import './LobbyScreen.css';
@@ -7,25 +8,30 @@ export default function LobbyScreen() {
   const [email, setEmail] = useState('');
   const [roomIdInput, setRoomIdInput] = useState('');
   const navigate = useNavigate();
-  const {connect, roomId} = useWebSocket();
+  const { connect, registerOnRoomIdSet } = useWebSocket();
 
-  useEffect=(()=>{
-    if (roomId){
-      navigate(`/room/${roomId}`);
-    }
-  },[roomId, navigate]);
+  const handleRoomIdSet = useCallback((newRoomId) => {
+    navigate(`/room/${newRoomId}`);
+  }, [navigate]);
 
+  useEffect(() => {
+    registerOnRoomIdSet(handleRoomIdSet);
 
+    // Clean up function if component unmounts
+    return () => {
+      registerOnRoomIdSet(null);
+    };
+  }, [registerOnRoomIdSet, handleRoomIdSet]);
 
   const handleCreateRoom = () => {
     connect(email);
-    navigate(`/room/${roomId}`);
+    // The navigation will happen in the callback when roomId is set
   };
 
   const handleJoinRoom = () => {
     if (roomIdInput.trim() !== '') {
-      connect(email, roomIdInput)
-      navigate(`/room/${roomIdInput}`);
+      connect(email, roomIdInput);
+      // The navigation will happen in the callback when roomId is set
     } else {
       alert('Please enter a valid room ID');
     }
@@ -58,4 +64,3 @@ export default function LobbyScreen() {
     </div>
   );
 };
-
