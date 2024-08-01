@@ -1,13 +1,35 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import ReactPlayer from 'react-player';
 import { useWebSocket } from '../../context/WScontext';
+import { usePeerContext } from '../../context/PeerProvidor';
 
 const RoomScreen = () => {
   const { roomId: paramRoomId } = useParams();
   const { roomId: contextRoomId } = useWebSocket();
-  // const { socket } = useWebSocket();
+  const [myStream, setMyStream] = useState(null);
+  const { sendStream, remoteStream } = usePeerContext();
 
   const roomId = contextRoomId || paramRoomId;
+
+  const getUserMediaStream = useCallback(async () => {
+    console.log("Requesting local media stream");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log("Local stream obtained:", stream);
+      sendStream(stream);
+      setMyStream(stream);
+    } catch (error) {
+      console.error("Error accessing media devices.", error);
+    }
+  }, [sendStream]);
+
+  useEffect(() => {
+    if (!myStream) {
+      console.log("Calling getUserMediaStream...");
+      getUserMediaStream();
+    }
+  }, [getUserMediaStream, myStream]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(roomId).then(() => {
@@ -20,6 +42,8 @@ const RoomScreen = () => {
   return (
     <div>
       <h2>Room Screen</h2>
+      <ReactPlayer url={myStream} playing muted/>
+      <ReactPlayer url={remoteStream} playing/>
       <p>Room ID: {roomId}</p>
       <button onClick={copyToClipboard}>Copy Room ID</button>
     </div>

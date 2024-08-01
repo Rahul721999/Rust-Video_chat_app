@@ -1,48 +1,89 @@
-import React, { createContext, useMemo, useContext } from "react";
+import React, { createContext, useMemo, useContext, useCallback, useEffect, useState } from "react";
 
 const PeerContext = createContext(null);
 
-export const PeerProvider = ({children}) => {
-    const peer = useMemo(() => new RTCPeerConnection({
-        iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:global.stun.twilio.com:3478" }
-        ]
-    }), []);
+export const PeerProvider = ({ children }) => {
+  const [remoteStream, setRemoteStream] = useState(null);
+  const peer = useMemo(() => new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:global.stun.twilio.com:3478" }
+    ]
+  }), []);
 
-    const createOffer = async () => {
-        try {
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
-            return offer;
-        } catch (error) {
-            console.error("Failed to create offer:", error);
-            throw error;
-        }
+  const createOffer = async () => {
+    try {
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      return offer;
+    } catch (error) {
+      console.error("Failed to create offer:", error);
+      throw error;
+    }
+  };
+
+  const createAns = async (offer) => {
+    try {
+      await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      const ans = await peer.createAnswer();
+      await peer.setLocalDescription(ans);
+      return ans;
+    } catch (error) {
+      console.error("Failed to create answer:", error);
+      throw error;
+    }
+  };
+
+  const setRemoteAns = async (ans) => {
+    await peer.setRemoteDescription(new RTCSessionDescription(ans));
+  };
+
+  const sendStream = useCallback((stream) => {
+    console.log("Adding tracks to peer connection");
+    const tracks = stream.getTracks();
+    for (const track of tracks) {
+      peer.addTrack(track, stream);
+    }
+  }, [peer]);
+
+  const handleTrackEvent = useCallback((event) => {
+    console.log("Track event received:", event);
+    if (event.streams && event.streams[0]) {
+      setRemoteStream(event.streams[0]);
+    } else {
+      const inboundStream = new MediaStream();
+      inboundStream.addTrack(event.track);
+      setRemoteStream(inboundStream);
+    }
+  }, []);
+
+  const handleICECandidate = (event) => {
+    if (event.candidate) {
+      console.log("New ICE candidate:", event.candidate);
+      // Send the candidate to the remote peer
+    }
+  };
+
+  const handleICEConnectionStateChange = () => {
+    console.log("ICE connection state change:", peer.iceConnectionState);
+  };
+
+  useEffect(() => {
+    peer.addEventListener('track', handleTrackEvent);
+    peer.addEventListener('icecandidate', handleICECandidate);
+    peer.addEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
+    return () => {
+      peer.removeEventListener('track', handleTrackEvent);
+      peer.removeEventListener('icecandidate', handleICECandidate);
+      peer.removeEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
     };
-    
-    const createAns = async (offer) =>{
-        try{
-            await peer.setRemoteDescription(offer);
-            const ans = await peer.createAnswer();
-            await peer.setLocalDescription(ans);
-            return ans;
-        }catch (error){
-            console.error("Failed to create Ans: ", error);
-            throw error;
-        }
-    }
+  }, [handleTrackEvent, peer]);
 
-    const setRemoteAns = async (ans) =>{
-        await peer.setRemoteDescription(ans)
-    }
-    
-
-    return (
-        <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns }} >
-            {children}
-        </PeerContext.Provider>
-    )
-}
+  return (
+    <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream }}>
+      {children}
+    </PeerContext.Provider>
+  );
+};
 
 export const usePeerContext = () => useContext(PeerContext);
