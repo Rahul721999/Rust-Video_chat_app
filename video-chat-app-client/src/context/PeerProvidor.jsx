@@ -24,6 +24,7 @@ export const PeerProvider = ({ children }) => {
 
   const createAns = async (offer) => {
     try {
+      console.info("creating ans for offered-call");
       await peer.setRemoteDescription(new RTCSessionDescription(offer));
       const ans = await peer.createAnswer();
       await peer.setLocalDescription(ans);
@@ -35,6 +36,7 @@ export const PeerProvider = ({ children }) => {
   };
 
   const setRemoteAns = async (ans) => {
+    console.info("setting remote ans in peerProvider: ", ans);
     await peer.setRemoteDescription(new RTCSessionDescription(ans));
   };
 
@@ -43,11 +45,12 @@ export const PeerProvider = ({ children }) => {
     const tracks = stream.getTracks();
     for (const track of tracks) {
       peer.addTrack(track, stream);
+      
     }
   }, [peer]);
 
   const handleTrackEvent = useCallback((event) => {
-    console.log("Track event received:", event);
+    console.info("Track event received");
     if (event.streams && event.streams[0]) {
       setRemoteStream(event.streams[0]);
     } else {
@@ -59,14 +62,17 @@ export const PeerProvider = ({ children }) => {
 
   const handleICECandidate = (event) => {
     if (event.candidate) {
-      console.log("New ICE candidate:", event.candidate);
+      console.info("New ICE candidate");
       // Send the candidate to the remote peer
+      // Example:
+      // socket.emit('ice-candidate', event.candidate);
     }
   };
 
-  const handleICEConnectionStateChange = () => {
-    console.log("ICE connection state change:", peer.iceConnectionState);
-  };
+  const handleICEConnectionStateChange = useCallback(() => {
+    console.info("ICE connection state change:", peer.iceConnectionState);
+  }, [peer.iceConnectionState]);
+
 
   useEffect(() => {
     peer.addEventListener('track', handleTrackEvent);
@@ -77,7 +83,7 @@ export const PeerProvider = ({ children }) => {
       peer.removeEventListener('icecandidate', handleICECandidate);
       peer.removeEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
     };
-  }, [handleTrackEvent, peer]);
+  }, [handleTrackEvent,handleICEConnectionStateChange, peer]);
 
   return (
     <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream }}>

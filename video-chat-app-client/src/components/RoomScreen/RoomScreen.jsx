@@ -16,7 +16,7 @@ const RoomScreen = () => {
     console.log("Requesting local media stream");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      console.log("Local stream obtained:", stream);
+      console.log("Local stream obtained");
       sendStream(stream);
       setMyStream(stream);
     } catch (error) {
@@ -42,8 +42,8 @@ const RoomScreen = () => {
   return (
     <div>
       <h2>Room Screen</h2>
-      <ReactPlayer url={myStream} playing muted/>
-      <ReactPlayer url={remoteStream} playing/>
+      <ReactPlayer url={myStream} playing muted />
+      <ReactPlayer url={remoteStream} playing muted />
       <p>Room ID: {roomId}</p>
       <button onClick={copyToClipboard}>Copy Room ID</button>
     </div>
