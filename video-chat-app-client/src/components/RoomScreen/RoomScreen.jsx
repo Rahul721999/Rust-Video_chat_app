@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ReactPlayer from 'react-player';
 import { useWebSocket } from '../../context/WScontext';
 import { usePeerContext } from '../../context/PeerProvidor';
-
+import './RoomScreen.css';
 const RoomScreen = () => {
   const { roomId: paramRoomId } = useParams();
   const { roomId: contextRoomId } = useWebSocket();
@@ -42,8 +41,22 @@ const RoomScreen = () => {
   return (
     <div>
       <h2>Room Screen</h2>
-      <ReactPlayer url={myStream} playing muted />
-      <ReactPlayer url={remoteStream} playing muted />
+      <div className="video-container">
+        {myStream && (
+          <div className="video-wrapper">
+            <div className="username-label">My Video</div>
+            <video ref={el => { if (el) el.srcObject = myStream; }} autoPlay muted />
+          </div>
+        )}
+      </div>
+      <div className="video-container">
+        {remoteStream && (
+          <div className="video-wrapper">
+            <div className="username-label">{"remote-video"}</div>
+            <video ref={el => { if (el) el.srcObject = remoteStream; }} autoPlay muted />
+          </div>
+        )}
+      </div>
       <p>Room ID: {roomId}</p>
       <button onClick={copyToClipboard}>Copy Room ID</button>
     </div>

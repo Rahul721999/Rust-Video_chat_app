@@ -1,0 +1,30 @@
+.video-container {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    max-width: 600px; /* Adjust as needed */
+    margin: 20px auto;
+  }
+  
+  .video-wrapper {
+    position: relative;
+  }
+  
+  video {
+    width: 400px;
+    height: auto;
+    display: block;
+  }
+  
+  .username-label {
+    position: absolute;
+    top: 10px; /* Adjust as needed */
+    left: 10px; /* Adjust as needed */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    color: white;
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 16px; /* Adjust as needed */
+  }
+  

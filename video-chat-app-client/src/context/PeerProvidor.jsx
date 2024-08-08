@@ -4,6 +4,8 @@ const PeerContext = createContext(null);
 
 export const PeerProvider = ({ children }) => {
   const [remoteStream, setRemoteStream] = useState(null);
+
+  // Initialize RTCPeerConnection with STUN servers
   const peer = useMemo(() => new RTCPeerConnection({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -11,6 +13,7 @@ export const PeerProvider = ({ children }) => {
     ]
   }), []);
 
+  // Create and set offer for the peer connection
   const createOffer = async () => {
     try {
       const offer = await peer.createOffer();
@@ -22,9 +25,10 @@ export const PeerProvider = ({ children }) => {
     }
   };
 
+  // Create and set answer for the incoming offer
   const createAns = async (offer) => {
     try {
-      console.info("creating ans for offered-call");
+      console.info("Creating answer for the offered call");
       await peer.setRemoteDescription(new RTCSessionDescription(offer));
       const ans = await peer.createAnswer();
       await peer.setLocalDescription(ans);
@@ -35,20 +39,22 @@ export const PeerProvider = ({ children }) => {
     }
   };
 
+  // Set remote answer description
   const setRemoteAns = useCallback(async (ans) => {
-    console.info("setting remote ans in peerProvider: ", ans);
+    console.info("Setting remote answer in PeerProvider:", ans);
     await peer.setRemoteDescription(new RTCSessionDescription(ans));
-  },[peer]);
+  }, [peer]);
 
+  // Add tracks from the given stream to the peer connection
   const sendStream = useCallback((stream) => {
     console.log("Adding tracks to peer connection");
     const tracks = stream.getTracks();
     for (const track of tracks) {
       peer.addTrack(track, stream);
-
     }
   }, [peer]);
 
+  // Handle incoming track events
   const handleTrackEvent = useCallback((event) => {
     console.info("Track event received");
     if (event.streams && event.streams[0]) {
@@ -60,18 +66,18 @@ export const PeerProvider = ({ children }) => {
     }
   }, []);
 
+  // Log ICE connection state changes
   const handleICEConnectionStateChange = useCallback(() => {
     console.info("ICE connection state change:", peer.iceConnectionState);
   }, [peer.iceConnectionState]);
 
-
+  // Set up event listeners for track and ICE connection state changes
   useEffect(() => {
     peer.addEventListener('track', handleTrackEvent);
-    // peer.addEventListener('icecandidate', handleICECandidate);
     peer.addEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
+
     return () => {
       peer.removeEventListener('track', handleTrackEvent);
-      // peer.removeEventListener('icecandidate', handleICECandidate);
       peer.removeEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
     };
   }, [handleTrackEvent, handleICEConnectionStateChange, peer]);
