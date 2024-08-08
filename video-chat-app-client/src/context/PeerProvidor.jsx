@@ -35,17 +35,17 @@ export const PeerProvider = ({ children }) => {
     }
   };
 
-  const setRemoteAns = async (ans) => {
+  const setRemoteAns = useCallback(async (ans) => {
     console.info("setting remote ans in peerProvider: ", ans);
     await peer.setRemoteDescription(new RTCSessionDescription(ans));
-  };
+  },[peer]);
 
   const sendStream = useCallback((stream) => {
     console.log("Adding tracks to peer connection");
     const tracks = stream.getTracks();
     for (const track of tracks) {
       peer.addTrack(track, stream);
-      
+
     }
   }, [peer]);
 
@@ -60,15 +60,6 @@ export const PeerProvider = ({ children }) => {
     }
   }, []);
 
-  const handleICECandidate = (event) => {
-    if (event.candidate) {
-      console.info("New ICE candidate");
-      // Send the candidate to the remote peer
-      // Example:
-      // socket.emit('ice-candidate', event.candidate);
-    }
-  };
-
   const handleICEConnectionStateChange = useCallback(() => {
     console.info("ICE connection state change:", peer.iceConnectionState);
   }, [peer.iceConnectionState]);
@@ -76,14 +67,14 @@ export const PeerProvider = ({ children }) => {
 
   useEffect(() => {
     peer.addEventListener('track', handleTrackEvent);
-    peer.addEventListener('icecandidate', handleICECandidate);
+    // peer.addEventListener('icecandidate', handleICECandidate);
     peer.addEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
     return () => {
       peer.removeEventListener('track', handleTrackEvent);
-      peer.removeEventListener('icecandidate', handleICECandidate);
+      // peer.removeEventListener('icecandidate', handleICECandidate);
       peer.removeEventListener('iceconnectionstatechange', handleICEConnectionStateChange);
     };
-  }, [handleTrackEvent,handleICEConnectionStateChange, peer]);
+  }, [handleTrackEvent, handleICEConnectionStateChange, peer]);
 
   return (
     <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream }}>

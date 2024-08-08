@@ -1,16 +1,18 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect} from "react";
 import { usePeerContext } from "./PeerProvidor.jsx";
 
 const WScontext = createContext(null);
 
 export const WSprovider = ({ children }) => {
+    const [user_email, setEmail] = useState(null);
     const [socket, setWebSocket] = useState(null);
     const [roomId, setRoomId] = useState(null);
     const [onRoomIdSet, setOnRoomIdSet] = useState(null);
-    const { createOffer, createAns, setRemoteAns } = usePeerContext();
+    const { createOffer, createAns, setRemoteAns, peer } = usePeerContext();
 
     const connect = (email, roomId = null) => {
         console.log(`connecting with email: ${email}`);
+        setEmail(email);
         const url = roomId
             ? `ws://localhost:8080/ws/?email=${encodeURIComponent(email)}&room=${roomId}`
             : `ws://localhost:8080/ws/?email=${encodeURIComponent(email)}`;
@@ -58,10 +60,14 @@ export const WSprovider = ({ children }) => {
                         break;
                     case 'Call-Ans':
                         console.log(`call answered by: `, message.sender);
-                        await handle_call_answered(message.ans);
+                        await handle_call_answered(newSocket, email, message.sender, message.ans);
                         break;
                     case 'UserLeft':
                         console.info(`${message.user_email} left the room`);
+                        break;
+                    case 'ice-candidate':
+                        console.info('ice-candidate recieved', message.candidate);
+                        await handleIceCandidateEvent(message.candidate)
                         break;
                     default:
                         console.warn('Unknown message type:', message);
@@ -71,7 +77,7 @@ export const WSprovider = ({ children }) => {
             }
         };
 
-        const handle_user_joined_event = async (newSocket) => {
+        const handle_user_joined_event = async (socket) => {
             try {
                 const offer = await createOffer(); // Create an offer when a user joins
                 const offerMessage = {
@@ -80,17 +86,17 @@ export const WSprovider = ({ children }) => {
                         text: JSON.stringify({ type: 'Offer-call', sender: email, offer }),
                     },
                 };
-                newSocket.send(JSON.stringify(offerMessage)); // Send the offer as a broadcast message
+                socket.send(JSON.stringify(offerMessage)); // Send the offer as a broadcast message
             } catch (error) {
                 console.error('Failed to create offer:', error);
             }
         };
 
-        const handle_offer = async (newSocket, sender, reciever, offer) => {
+        const handle_offer = async (socket, sender, reciever, offer) => {
             try {
                 console.info("Answering call...");
                 const ans = await createAns(offer);
-                console.info("🚀ANS: "+ans);
+                console.info("ANS: " + ans);
                 const ansMessage = {
                     Forward: {
                         sender,
@@ -98,25 +104,61 @@ export const WSprovider = ({ children }) => {
                         text: JSON.stringify({ type: 'Call-Ans', sender, ans }),
                     },
                 };
-                newSocket.send(JSON.stringify(ansMessage));
+                socket.send(JSON.stringify(ansMessage));
                 console.log("Call answered");
             } catch (error) {
-                console.error('Failed to create answer:', error);
+                console.error('Failed to handle Offer:', error);
             }
         };
 
-        const handle_call_answered = async (socket, ans) => {
+        const handle_call_answered = async (socket, sender, reciever, candidate) => {
             try {
-                console.info("Handing call-answered event");
-                setRemoteAns(ans);
-                
-                socket.send();
+                console.info("Handling call-answered event");
+                const remoteAnsMsg = {
+                    Forward: {
+                        sender,
+                        reciever,
+                        text: JSON.stringify({type: 'ice-candidate', sender, candidate}),
+                    },
+                };
+                console.log(remoteAnsMsg);
+                socket.send(JSON.stringify(remoteAnsMsg));
+                setRemoteAns(candidate);
             } catch (error) {
                 console.error("Failed to handle call-answered event:", error);
             }
         };
+
+        const handleIceCandidateEvent = async (candidate) => {
+            try {
+                console.info("handling Ice-Candidate Event")
+                await peer.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (error) {
+                console.error("failed to handle Ice-Candidate event: ", error);
+            }
+        }
     };
 
+    useEffect(() => {
+        const handleICECandidate = (event) => {
+            if (event.candidate) {
+                const candidateMessage = {
+                    Broadcast: {
+                        sender: user_email,
+                        text: JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }),
+                    },
+                };
+                socket.send(JSON.stringify(candidateMessage));
+            }
+        };
+    
+        peer.addEventListener('icecandidate', handleICECandidate);
+        return () => {
+            peer.removeEventListener('icecandidate', handleICECandidate);
+        };
+    }, [peer, socket, user_email]);
+
+    
     const disconnect = () => {
         if (socket) {
             socket.close();
@@ -126,6 +168,8 @@ export const WSprovider = ({ children }) => {
     const registerOnRoomIdSet = (callback) => {
         setOnRoomIdSet(() => callback);
     };
+
+
 
     return (
         <WScontext.Provider value={{ socket, connect, disconnect, roomId, registerOnRoomIdSet }}>
