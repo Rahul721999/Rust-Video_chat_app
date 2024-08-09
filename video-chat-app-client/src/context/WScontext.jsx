@@ -27,7 +27,7 @@ export const WSprovider = ({ children }) => {
 
         newSocket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            console.log('Message from server:', message);
+            console.log('🔖 Message from server:', message);
             handleWebSocketMessage(message);
         };
 
@@ -60,7 +60,7 @@ export const WSprovider = ({ children }) => {
                         break;
                     case 'Call-Ans':
                         console.log(`call answered by: `, message.sender);
-                        await handle_call_answered(newSocket, email, message.sender, message.ans);
+                        await handle_call_answered(message.ans);
                         break;
                     case 'UserLeft':
                         console.info(`${message.user_email} left the room`);
@@ -78,9 +78,10 @@ export const WSprovider = ({ children }) => {
         };
 
         /* ---------------------------------------User2-joined event--------------------------------------- */
-        // offering a call
+        // use1 offering a call
         const handle_user_joined_event = async (socket) => {
             try {
+                console.debug("creating offer for newly-joined user.")
                 const offer = await createOffer(); // Create an offer when a user joins
                 const offerMessage = {
                     Broadcast: {
@@ -89,21 +90,23 @@ export const WSprovider = ({ children }) => {
                     },
                 };
                 socket.send(JSON.stringify(offerMessage)); // Send the offer as a broadcast message
+                console.debug(`🚀Offer: ${offerMessage.Broadcast.text}`);
             } catch (error) {
                 console.error('Failed to create offer:', error);
             }
         };
 
         /* ---------------------------------user1 offered a call to user2---------------------------------*/
-        // accepting call
+        // user2 accepting call by creating an Answer for the offer
         const handle_offer = async (socket, sender, reciever, offer) => {
             try {
+                console.debug(`Accepting call offer: ${offer.sdp}`);
                 if (peer.signalingState !== 'stable') {
                     console.warn('Peer connection is not in stable state. Ignoring offer.');
                     return;
                 }
         
-                console.info("Answering call...");
+                console.debug("Answering call...");
                 const ans = await createAns(offer); // create ans for the offer
         
                 /* Forward the 'ans' to the person who offered the call stating,
@@ -116,39 +119,30 @@ export const WSprovider = ({ children }) => {
                     },
                 };
                 socket.send(JSON.stringify(ansMessage));
-                console.log("Call answered");
+                console.log(`🚩Call answered. Ans: ${ansMessage.Forward.text}`);
             } catch (error) {
                 console.error('Failed to handle Offer:', error);
             }
         };
 
         /* ------------------------------user2 accepted the call from user1------------------------------ */
-        //
-        const handle_call_answered = async (socket, sender, reciever, candidate) => {
+        // Now user1 have to set the 'ans' to remote-description
+        const handle_call_answered = async (call_ans) => {
             try {
                 if (peer.signalingState !== 'have-local-offer') {
                     console.warn('Peer connection is not in the correct state to handle answer.');
                     return;
                 }
         
-                console.info("Handling call-answered event, remoteAns: ",candidate);
-                await peer.setRemoteDescription(new RTCSessionDescription(candidate));
-                // Additional handling if needed
-        
-                const remoteAnsMsg = {
-                    Forward: {
-                        sender,
-                        reciever,
-                        text: JSON.stringify({ type: 'Ice-candidate', sender, candidate }),
-                    },
-                };
-                socket.send(JSON.stringify(remoteAnsMsg));
+                console.info("Handling call-answered event");
+                await peer.setRemoteDescription(new RTCSessionDescription(call_ans));
             } catch (error) {
                 console.error("Failed to handle call-answered event:", error);
             }
         };
         
-
+        /* ----------------------------------Handling ICE-Candidate event---------------------------------- */
+        // Everytime when new IceCandidate is found add it to the Peer.
         const handleIceCandidateEvent = async (candidate) => {
             try {
                 console.info("handling Ice-Candidate Event")
@@ -159,6 +153,7 @@ export const WSprovider = ({ children }) => {
         }
     };
 
+    // Invokes the HandleIceCandidate event for new ICE-Candidate found event
     useEffect(() => {
         const handleICECandidate = (event) => {
             if (event.candidate) {
@@ -179,12 +174,14 @@ export const WSprovider = ({ children }) => {
     }, [peer, socket, sender]);
 
     
+    /* Socket Disconnect event */
     const disconnect = () => {
         if (socket) {
             socket.close();
         }
     };
 
+    /*  */
     const registerOnRoomIdSet = (callback) => {
         setOnRoomIdSet(() => callback);
     };

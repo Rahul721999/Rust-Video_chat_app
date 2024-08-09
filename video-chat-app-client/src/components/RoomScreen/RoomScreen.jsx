@@ -16,8 +16,8 @@ const RoomScreen = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       console.log("Local stream obtained");
-      sendStream(stream);
-      setMyStream(stream);
+      sendStream(stream); // Send user's stream to another user
+      setMyStream(stream); // Render user's stream
     } catch (error) {
       console.error("Error accessing media devices.", error);
     }
