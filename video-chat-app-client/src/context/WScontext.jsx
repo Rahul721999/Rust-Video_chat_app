@@ -5,11 +5,10 @@ const WScontext = createContext(null);
 
 export const WSprovider = ({ children }) => {
     const [sender, setSender] = useState(null);
-    const [reciever, setReciever] = useState(null);
     const [socket, setWebSocket] = useState(null);
     const [roomId, setRoomId] = useState(null);
     const [onRoomIdSet, setOnRoomIdSet] = useState(null);
-    const { createOffer, createAns, setRemoteAns, peer } = usePeerContext();
+    const { createOffer, createAns, peer } = usePeerContext();
 
     const connect = (email, roomId = null) => {
         console.log(`connecting with email: ${email}`);
@@ -50,7 +49,6 @@ export const WSprovider = ({ children }) => {
                         break;
                     case 'UserJoined':
                         console.info(`${message.user_email} Joined`);
-                        setReciever(message.user_email);
                         await handle_user_joined_event(newSocket);
                         break;
                     case 'Notification':
@@ -106,10 +104,10 @@ export const WSprovider = ({ children }) => {
                 }
         
                 console.info("Answering call...");
-                await peer.setRemoteDescription(new RTCSessionDescription(offer));
-                const ans = await peer.createAnswer();
-                await peer.setLocalDescription(ans);
+                const ans = await createAns(offer); // create ans for the offer
         
+                /* Forward the 'ans' to the person who offered the call stating,
+                    you accepted the call, here's the ans. */
                 const ansMessage = {
                     Forward: {
                         sender,
@@ -123,7 +121,9 @@ export const WSprovider = ({ children }) => {
                 console.error('Failed to handle Offer:', error);
             }
         };
-        
+
+        /* ------------------------------user2 accepted the call from user1------------------------------ */
+        //
         const handle_call_answered = async (socket, sender, reciever, candidate) => {
             try {
                 if (peer.signalingState !== 'have-local-offer') {
@@ -131,7 +131,7 @@ export const WSprovider = ({ children }) => {
                     return;
                 }
         
-                console.info("Handling call-answered event");
+                console.info("Handling call-answered event, remoteAns: ",candidate);
                 await peer.setRemoteDescription(new RTCSessionDescription(candidate));
                 // Additional handling if needed
         

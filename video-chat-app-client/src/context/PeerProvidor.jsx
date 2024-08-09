@@ -29,9 +29,9 @@ export const PeerProvider = ({ children }) => {
   const createAns = async (offer) => {
     try {
       console.info("Creating answer for the offered call");
-      await peer.setRemoteDescription(new RTCSessionDescription(offer));
-      const ans = await peer.createAnswer();
-      await peer.setLocalDescription(ans);
+      await peer.setRemoteDescription(new RTCSessionDescription(offer)); // add offer to the REMOTE Description
+      const ans = await peer.createAnswer(); // create ans for the offer
+      await peer.setLocalDescription(ans); // add the ans to the LOCAL description
       return ans;
     } catch (error) {
       console.error("Failed to create answer:", error);
