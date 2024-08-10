@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect} from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { usePeerContext } from "./PeerProvidor.jsx";
 
 const WScontext = createContext(null);
@@ -8,7 +8,7 @@ export const WSprovider = ({ children }) => {
     const [socket, setWebSocket] = useState(null);
     const [roomId, setRoomId] = useState(null);
     const [onRoomIdSet, setOnRoomIdSet] = useState(null);
-    const { createOffer, createAns, peer } = usePeerContext();
+    const { createOffer, createAns, peer, setRemoteStream } = usePeerContext();
 
     const connect = (email, roomId = null) => {
         console.log(`connecting with email: ${email}`);
@@ -26,8 +26,8 @@ export const WSprovider = ({ children }) => {
         };
 
         newSocket.onmessage = (event) => {
+            console.log('🔖 Message from server:', event.data);
             const message = JSON.parse(event.data);
-            console.log('🔖 Message from server:', message);
             handleWebSocketMessage(message);
         };
 
@@ -90,7 +90,6 @@ export const WSprovider = ({ children }) => {
                     },
                 };
                 socket.send(JSON.stringify(offerMessage)); // Send the offer as a broadcast message
-                console.debug(`🚀Offer: ${offerMessage.Broadcast.text}`);
             } catch (error) {
                 console.error('Failed to create offer:', error);
             }
@@ -100,15 +99,14 @@ export const WSprovider = ({ children }) => {
         // user2 accepting call by creating an Answer for the offer
         const handle_offer = async (socket, sender, reciever, offer) => {
             try {
-                console.debug(`Accepting call offer: ${offer.sdp}`);
                 if (peer.signalingState !== 'stable') {
                     console.warn('Peer connection is not in stable state. Ignoring offer.');
                     return;
                 }
-        
+
                 console.debug("Answering call...");
                 const ans = await createAns(offer); // create ans for the offer
-        
+
                 /* Forward the 'ans' to the person who offered the call stating,
                     you accepted the call, here's the ans. */
                 const ansMessage = {
@@ -119,7 +117,7 @@ export const WSprovider = ({ children }) => {
                     },
                 };
                 socket.send(JSON.stringify(ansMessage));
-                console.log(`🚩Call answered. Ans: ${ansMessage.Forward.text}`);
+                console.log(`🚩Call answered`);
             } catch (error) {
                 console.error('Failed to handle Offer:', error);
             }
@@ -133,14 +131,14 @@ export const WSprovider = ({ children }) => {
                     console.warn('Peer connection is not in the correct state to handle answer.');
                     return;
                 }
-        
+
                 console.info("Handling call-answered event");
                 await peer.setRemoteDescription(new RTCSessionDescription(call_ans));
             } catch (error) {
                 console.error("Failed to handle call-answered event:", error);
             }
         };
-        
+
         /* ----------------------------------Handling ICE-Candidate event---------------------------------- */
         // Everytime when new IceCandidate is found add it to the Peer.
         const handleIceCandidateEvent = async (candidate) => {
@@ -156,24 +154,25 @@ export const WSprovider = ({ children }) => {
     // Invokes the HandleIceCandidate event for new ICE-Candidate found event
     useEffect(() => {
         const handleICECandidate = (event) => {
-            if (event.candidate) {
+            let candidate = event.candidate;
+            if (candidate) {
                 const candidateMessage = {
                     Broadcast: {
                         sender,
-                        text: JSON.stringify({ type: 'Ice-candidate', candidate: event.candidate }),
+                        text: JSON.stringify({ type: 'Ice-candidate', candidate }),
                     },
                 };
                 socket.send(JSON.stringify(candidateMessage));
             }
         };
-    
+
         peer.addEventListener('icecandidate', handleICECandidate);
         return () => {
             peer.removeEventListener('icecandidate', handleICECandidate);
         };
     }, [peer, socket, sender]);
 
-    
+
     /* Socket Disconnect event */
     const disconnect = () => {
         if (socket) {

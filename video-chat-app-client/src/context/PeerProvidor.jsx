@@ -18,6 +18,7 @@ export const PeerProvider = ({ children }) => {
     try {
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
+      console.log("Created offer:", offer);
       return offer;
     } catch (error) {
       console.error("Failed to create offer:", error);
@@ -39,10 +40,15 @@ export const PeerProvider = ({ children }) => {
     }
   };
 
+  
   // Set remote answer description
   const setRemoteAns = useCallback(async (ans) => {
-    console.info("Setting remote answer in PeerProvider:", ans);
-    await peer.setRemoteDescription(new RTCSessionDescription(ans));
+    try {
+      console.info("Setting remote answer:", ans);
+      await peer.setRemoteDescription(new RTCSessionDescription(ans));
+    } catch (error) {
+      console.error("Failed to set remote answer:", error);
+    }
   }, [peer]);
 
   // Add tracks from the given stream to the peer connection
@@ -50,16 +56,19 @@ export const PeerProvider = ({ children }) => {
     console.log("Adding tracks to peer connection");
     const tracks = stream.getTracks();
     for (const track of tracks) {
+      console.log("Adding track:", track.kind);
       peer.addTrack(track, stream);
     }
   }, [peer]);
 
   // Handle incoming track events
   const handleTrackEvent = useCallback((event) => {
-    console.info("Track event received");
+    console.info("Track event received:", event);
     if (event.streams && event.streams[0]) {
+      console.info("Setting remote stream from event");
       setRemoteStream(event.streams[0]);
     } else {
+      console.log('Failed to set track as remote media stream');
       const inboundStream = new MediaStream();
       inboundStream.addTrack(event.track);
       setRemoteStream(inboundStream);
@@ -83,7 +92,7 @@ export const PeerProvider = ({ children }) => {
   }, [handleTrackEvent, handleICEConnectionStateChange, peer]);
 
   return (
-    <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream }}>
+    <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream, setRemoteStream }}>
       {children}
     </PeerContext.Provider>
   );

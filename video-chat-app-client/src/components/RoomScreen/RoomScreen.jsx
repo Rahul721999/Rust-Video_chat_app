@@ -1,21 +1,24 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWebSocket } from '../../context/WScontext';
 import { usePeerContext } from '../../context/PeerProvidor';
 import './RoomScreen.css';
+
 const RoomScreen = () => {
   const { roomId: paramRoomId } = useParams();
   const { roomId: contextRoomId } = useWebSocket();
   const [myStream, setMyStream] = useState(null);
   const { sendStream, remoteStream } = usePeerContext();
+  const remoteVideoRef = useRef(null); // Ref for remote video element
 
   const roomId = contextRoomId || paramRoomId;
 
   const getUserMediaStream = useCallback(async () => {
     console.log("Requesting local media stream");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      console.log("Local stream obtained");
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const localTrackIds = stream.getTracks().map(track => track.id);
+      console.log("🚀Local Track IDs:", localTrackIds);
       sendStream(stream); // Send user's stream to another user
       setMyStream(stream); // Render user's stream
     } catch (error) {
@@ -38,6 +41,14 @@ const RoomScreen = () => {
     });
   };
 
+  // Set the remote stream to the video element
+  useEffect(() => {
+    console.info("remote Stream updated");
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
   return (
     <div>
       <h2>Room Screen</h2>
@@ -50,12 +61,10 @@ const RoomScreen = () => {
         )}
       </div>
       <div className="video-container">
-        {remoteStream && (
-          <div className="video-wrapper">
-            <div className="username-label">{"remote-video"}</div>
-            <video ref={el => { if (el) el.srcObject = remoteStream; }} autoPlay muted />
-          </div>
-        )}
+        <div className="video-wrapper">
+          <div className="username-label">Remote Video</div>
+          <video ref={remoteVideoRef} autoPlay />
+        </div>
       </div>
       <p>Room ID: {roomId}</p>
       <button onClick={copyToClipboard}>Copy Room ID</button>
