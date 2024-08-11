@@ -43,7 +43,7 @@ const RoomScreen = () => {
 
   // Set the remote stream to the video element
   useEffect(() => {
-    console.info("remote Stream updated");
+    console.info("✅Remote Stream updated", remoteStream);
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
     }
