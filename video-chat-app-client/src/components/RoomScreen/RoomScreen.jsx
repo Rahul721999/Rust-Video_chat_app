@@ -8,6 +8,7 @@ const RoomScreen = () => {
   const { roomId: paramRoomId } = useParams();
   const { roomId: contextRoomId } = useWebSocket();
   const [myStream, setMyStream] = useState(null);
+  const [videoEnabled, setVideoEnabled] = useState(true); // New state for video toggle
   const { sendStream, remoteStream } = usePeerContext();
   const remoteVideoRef = useRef(null); // Ref for remote video element
 
@@ -33,6 +34,13 @@ const RoomScreen = () => {
     }
   }, [getUserMediaStream, myStream]);
 
+  useEffect(() => {
+    if (myStream) {
+      // Update the video track's enabled state based on videoEnabled
+      myStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
+    }
+  }, [videoEnabled, myStream]);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(roomId).then(() => {
       console.info('Room ID copied to clipboard');
@@ -49,6 +57,11 @@ const RoomScreen = () => {
     }
   }, [remoteStream]);
 
+  // Toggle video function
+  const toggleVideo = () => {
+    setVideoEnabled(prevState => !prevState);
+  };
+
   return (
     <div>
       <h2>Room Screen</h2>
@@ -57,6 +70,9 @@ const RoomScreen = () => {
           <div className="video-wrapper">
             <div className="username-label">My Video</div>
             <video ref={el => { if (el) el.srcObject = myStream; }} autoPlay muted />
+            <button onClick={toggleVideo}>
+              {videoEnabled ? 'Turn Video Off' : 'Turn Video On'}
+            </button>
           </div>
         )}
       </div>
