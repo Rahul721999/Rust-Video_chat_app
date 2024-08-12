@@ -56,14 +56,14 @@ export const PeerProvider = ({ children }) => {
     console.log("Adding tracks to peer connection");
     const tracks = stream.getTracks();
     for (const track of tracks) {
-      console.log("Adding track:", track.kind);
+      console.log("Adding track:", track.id);
       peer.addTrack(track, stream);
     }
   }, [peer]);
 
   // Handle incoming track events
   const handleTrackEvent = useCallback((event) => {
-    console.info("Track event received:", event);
+    console.info("Track event received, TrackId: ", event.track.id);
     if (event.streams && event.streams[0]) {
       console.info("Setting remote stream from event");
       setRemoteStream(event.streams[0]);
@@ -92,7 +92,7 @@ export const PeerProvider = ({ children }) => {
   }, [handleTrackEvent, handleICEConnectionStateChange, peer]);
 
   return (
-    <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream, setRemoteStream }}>
+    <PeerContext.Provider value={{ peer, createOffer, createAns, setRemoteAns, sendStream, remoteStream }}>
       {children}
     </PeerContext.Provider>
   );

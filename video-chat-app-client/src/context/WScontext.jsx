@@ -8,7 +8,7 @@ export const WSprovider = ({ children }) => {
     const [socket, setWebSocket] = useState(null);
     const [roomId, setRoomId] = useState(null);
     const [onRoomIdSet, setOnRoomIdSet] = useState(null);
-    const { createOffer, createAns, peer, myStream, remoteStream, setRemoteStream } = usePeerContext();
+    const { createOffer, createAns, peer} = usePeerContext();
 
     const connect = (email, roomId = null) => {
         console.log(`connecting with email: ${email}`);
@@ -49,7 +49,9 @@ export const WSprovider = ({ children }) => {
                         break;
                     case 'UserJoined':
                         console.info(`${message.user_email} Joined`);
-                        await handle_user_joined_event(newSocket);
+                        setTimeout(async () => {
+                            await handle_user_joined_event(newSocket);
+                        }, 2000);
                         break;
                     case 'Notification':
                         console.log(message.msg);
@@ -60,7 +62,7 @@ export const WSprovider = ({ children }) => {
                         break;
                     case 'Call-Ans':
                         console.log(`call answered by: `, message.sender);
-                        await handle_call_answered(newSocket, message.sender, message.ans);
+                        await handle_call_answered(message.ans);
                         break;
                     case 'UserLeft':
                         console.info(`${message.user_email} left the room`);
@@ -68,14 +70,6 @@ export const WSprovider = ({ children }) => {
                     case 'Ice-candidate':
                         console.info('ice-candidate recieved');
                         await handleIceCandidateEvent(message.candidate)
-                        break;
-                    case 'Req-trackId':
-                        console.info("TrackId requested by:", message.sender);
-                        await handleTrackIdReqEvent(newSocket, message.sender);
-                        break;
-                    case 'TrackId':
-                        console.log(`TrackId recieved from: ${message.sender}, tracks: ${message.trackIds}`);
-                        await handleTrackIdMsgEvent(remoteStream, message.tracks);
                         break;
                     default:
                         console.warn('Unknown message type:', message);
@@ -133,7 +127,7 @@ export const WSprovider = ({ children }) => {
 
         /* ------------------------------user2 accepted the call from user1------------------------------ */
         // Now user1 have to set the 'ans' to remote-description
-        const handle_call_answered = async (socket, other_user, call_ans) => {
+        const handle_call_answered = async (call_ans) => {
             try {
                 if (peer.signalingState !== 'have-local-offer') {
                     console.warn('Peer connection is not in the correct state to handle answer.');
@@ -142,24 +136,10 @@ export const WSprovider = ({ children }) => {
 
                 console.info("Handling call-answered event");
                 await peer.setRemoteDescription(new RTCSessionDescription(call_ans));
-                req_remote_track_ids(other_user, socket);
             } catch (error) {
                 console.error("Failed to handle call-answered event:", error);
             }
         };
-
-        const req_remote_track_ids = (reciever, socket) => {
-            console.debug('sending connection-established msg');
-            const reqMsg = {
-                Forward: {
-                    sender: email,
-                    reciever,
-                    text: JSON.stringify({ type: 'Req-trackId', sender: email }),
-                },
-            };
-            socket.send(JSON.stringify(reqMsg)); // Send the offer as a broadcast message
-            console.debug("sent");
-        }
 
         /* ----------------------------------Handling ICE-Candidate event---------------------------------- */
         // Everytime when new IceCandidate is found add it to the Peer.
@@ -172,73 +152,7 @@ export const WSprovider = ({ children }) => {
             }
         }
 
-        /* ------------------------------- Handling-track-req event------------------------------- */
-        // sending the user's local tracks over the ws
-        const handleTrackIdReqEvent = async (socket,reciever) => {
-            try {
-                // getting tracks from myStream
-                let tracks = myStream.getTracks();
-
-                // Extracting track IDs
-                let trackIds = tracks.map(track => track.id);
-
-                // Constructing the message to send
-                const trackIdMsg = {
-                    Forward: {
-                        sender: email,
-                        reciever,
-                        text: JSON.stringify({ type: 'TrackId', trackIds: trackIds })
-                    }
-                };
-
-                // Sending the message over WebSocket
-                socket.send(JSON.stringify(trackIdMsg));
-                console.log("Track IDs sent:", trackIds);
-
-            } catch (error) {
-                console.error("Failed to handle Track req event:", error);
-            }
-        };
-
-
-        /* ----------------------------- Handling TrackId msg received ----------------------------- */
-        // adding tracks received over ws to user1's remoteStream
-        const handleTrackIdMsgEvent = async (remoteStream, trackIds) => {
-            try {
-                let remote_stream = null;
-                // Create a new MediaStream to hold the remote tracks if not already set
-                if (!remoteStream) {
-                    remote_stream = new MediaStream();
-                }
-
-                // Iterate over each track ID received
-                for (const trackId of trackIds) {
-                    // Assuming peer.getReceivers() gives us access to the received tracks
-                    const receiver = peer.getReceivers().find(r => r.track.id === trackId);
-
-                    if (receiver) {
-                        const track = receiver.track;
-                        console.log(`Adding remote track: ${track.kind}, Track ID: ${track.id}`);
-                        remote_stream.addTrack(track);
-                    } else {
-                        console.warn(`Track with ID ${trackId} not found in peer receivers.`);
-                    }
-                }
-
-                // // Set the remote stream to the appropriate video element or context
-                // if (remoteVideoRef.current) {
-                //     remoteVideoRef.current.srcObject = remote_stream;
-                //     console.info("Remote stream set on video element.");
-                // }
-
-                setRemoteStream(remote_stream);
-
-            } catch (error) {
-                console.error("Failed to handle TrackId message event:", error);
-            }
-        };
-
-
+    
     };
 
     // Invokes the HandleIceCandidate event for new ICE-Candidate found event
